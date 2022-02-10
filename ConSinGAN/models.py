@@ -5,6 +5,7 @@ import math
 import copy
 import torch.nn.functional as F
 from ConSinGAN.imresize import imresize, imresize_to_shape
+from axial_attention import AxialAttention
 
 
 def weights_init(m):
@@ -52,7 +53,9 @@ class Discriminator(nn.Module):
         for i in range(opt.num_layer):
             block = ConvBlock(N, N, opt.ker_size, opt.padd_size, opt)
             self.body.add_module('block%d'%(i),block)
-
+            if(i+1 == opt.num_layer):
+                attn = AxialAttention(dim=N, dim_index=1, heads=1, dim_heads=16, num_dimensions=2, sum_axial_out = True)
+                self.body.add_module('attn%d'%(i),attn)
         self.tail = nn.Conv2d(N, 1, kernel_size=opt.ker_size, padding=opt.padd_size)
 
     def forward(self,x):
@@ -81,6 +84,9 @@ class GrowingGenerator(nn.Module):
         for i in range(opt.num_layer):
             block = ConvBlock(N, N, opt.ker_size, opt.padd_size, opt, generator=True)
             _first_stage.add_module('block%d'%(i),block)
+            if(i+1 == opt.num_layer):
+                attn = AxialAttention(dim=N, dim_index=1, heads=1, dim_heads=16, num_dimensions=2, sum_axial_out = True)
+                _first_stage.add_module('attn%d'%(i),attn)
         self.body.append(_first_stage)
 
         self.tail = nn.Sequential(
